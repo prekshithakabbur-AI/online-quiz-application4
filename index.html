@@ -1,0 +1,383 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Quiz Application</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #e9efff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #304ffe;
+            margin-bottom: 20px;
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        #question {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .option {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        .option:hover:not(:disabled) {
+            background: #e9efff;
+            border-color: #304ffe;
+        }
+
+        .option:disabled {
+            cursor: default;
+            color: #222;
+        }
+
+        .correct {
+            background: #c8f7d2;
+            border-color: green;
+        }
+
+        .wrong {
+            background: #ffd1d1;
+            border-color: red;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+        }
+
+        button.nav {
+            padding: 12px 22px;
+            border: none;
+            border-radius: 7px;
+            background: #304ffe;
+            color: white;
+            cursor: pointer;
+        }
+
+        button.nav:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        #result {
+            text-align: center;
+            display: none;
+        }
+
+        #result h2 {
+            color: #304ffe;
+            margin-bottom: 15px;
+        }
+
+        #restart {
+            margin-top: 20px;
+            padding: 12px 25px;
+            background: #304ffe;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        #feedback {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Online Quiz</h1>
+
+    <div id="quiz">
+
+        <div class="top">
+            <span id="progress">Question 1/10</span>
+            <span id="timer">Time: 15s</span>
+        </div>
+
+        <h3 id="question"></h3>
+
+        <div id="options"></div>
+
+        <p id="feedback"></p>
+
+        <div class="buttons">
+            <button class="nav" id="prev">Previous</button>
+            <button class="nav" id="next">Next</button>
+        </div>
+
+    </div>
+
+    <div id="result">
+        <h2>Quiz Completed!</h2>
+        <h3 id="score"></h3>
+        <p id="percentage"></p>
+        <button id="restart">Restart Quiz</button>
+    </div>
+
+</div>
+
+<script>
+
+const questions = [
+    {
+        question: "What does HTML stand for?",
+        options: [
+            "Hyper Text Markup Language",
+            "High Text Machine Language",
+            "Hyper Tool Multi Language",
+            "Home Text Markup Language"
+        ],
+        answer: 0
+    },
+    {
+        question: "Which language is used for styling web pages?",
+        options: ["HTML", "CSS", "Python", "Java"],
+        answer: 1
+    },
+    {
+        question: "Which tag is used to create a hyperlink?",
+        options: ["<link>", "<a>", "<href>", "<p>"],
+        answer: 1
+    },
+    {
+        question: "Which language makes a webpage interactive?",
+        options: ["CSS", "HTML", "JavaScript", "SQL"],
+        answer: 2
+    },
+    {
+        question: "Which tag is used for the largest heading?",
+        options: ["<h6>", "<head>", "<h1>", "<heading>"],
+        answer: 2
+    },
+    {
+        question: "Which symbol is used for an ID selector in CSS?",
+        options: [".", "#", "*", "&"],
+        answer: 1
+    },
+    {
+        question: "Which property changes text color in CSS?",
+        options: ["font-style", "background", "color", "text-size"],
+        answer: 2
+    },
+    {
+        question: "Which method displays a message in JavaScript?",
+        options: ["alert()", "print()", "display()", "show()"],
+        answer: 0
+    },
+    {
+        question: "Which tag is used to insert an image?",
+        options: ["<picture>", "<img>", "<image>", "<src>"],
+        answer: 1
+    },
+    {
+        question: "Which HTML tag creates a table row?",
+        options: ["<td>", "<th>", "<tr>", "<table>"],
+        answer: 2
+    }
+];
+
+let currentQuestion = 0;
+let userAnswers = Array(questions.length).fill(null);
+let timeLeft = 15;
+let timerInterval;
+
+const questionEl = document.getElementById("question");
+const optionsEl = document.getElementById("options");
+const timerEl = document.getElementById("timer");
+const feedbackEl = document.getElementById("feedback");
+
+function startTimer() {
+    clearInterval(timerInterval);
+    timeLeft = 15;
+    timerEl.innerText = "Time: " + timeLeft + "s";
+
+    if (userAnswers[currentQuestion] !== null) {
+        timerEl.innerText = "Answered";
+        return;
+    }
+
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        timerEl.innerText = "Time: " + timeLeft + "s";
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            nextQuestion();
+        }
+    }, 1000);
+}
+
+function loadQuestion() {
+
+    clearInterval(timerInterval);
+
+    const q = questions[currentQuestion];
+
+    document.getElementById("progress").innerText =
+        `Question ${currentQuestion + 1}/${questions.length}`;
+
+    questionEl.innerText = q.question;
+    optionsEl.innerHTML = "";
+    feedbackEl.innerText = "";
+
+    q.options.forEach((option, index) => {
+
+        const btn = document.createElement("button");
+        btn.innerText = option;
+        btn.className = "option";
+
+        if (userAnswers[currentQuestion] !== null) {
+            btn.disabled = true;
+
+            if (index === q.answer) {
+                btn.classList.add("correct");
+            }
+
+            if (index === userAnswers[currentQuestion] &&
+                index !== q.answer) {
+                btn.classList.add("wrong");
+            }
+        }
+
+        btn.onclick = () => selectAnswer(index);
+
+        optionsEl.appendChild(btn);
+    });
+
+    if (userAnswers[currentQuestion] !== null) {
+        feedbackEl.innerText =
+            userAnswers[currentQuestion] === q.answer
+            ? "Correct Answer!"
+            : "Wrong Answer!";
+    }
+
+    document.getElementById("prev").disabled =
+        currentQuestion === 0;
+
+    document.getElementById("next").innerText =
+        currentQuestion === questions.length - 1
+        ? "Submit"
+        : "Next";
+
+    startTimer();
+}
+
+function selectAnswer(index) {
+
+    if (userAnswers[currentQuestion] !== null) return;
+
+    clearInterval(timerInterval);
+
+    userAnswers[currentQuestion] = index;
+
+    loadQuestion();
+}
+
+function nextQuestion() {
+
+    clearInterval(timerInterval);
+
+    if (currentQuestion < questions.length - 1) {
+        currentQuestion++;
+        loadQuestion();
+    } else {
+        showResult();
+    }
+}
+
+document.getElementById("next").onclick = nextQuestion;
+
+document.getElementById("prev").onclick = () => {
+    if (currentQuestion > 0) {
+        currentQuestion--;
+        loadQuestion();
+    }
+};
+
+function showResult() {
+
+    clearInterval(timerInterval);
+
+    let score = 0;
+
+    questions.forEach((q, index) => {
+        if (userAnswers[index] === q.answer) {
+            score++;
+        }
+    });
+
+    document.getElementById("quiz").style.display = "none";
+    document.getElementById("result").style.display = "block";
+
+    document.getElementById("score").innerText =
+        `Your Score: ${score}/${questions.length}`;
+
+    document.getElementById("percentage").innerText =
+        `Percentage: ${(score / questions.length) * 100}%`;
+}
+
+document.getElementById("restart").onclick = () => {
+
+    currentQuestion = 0;
+    userAnswers = Array(questions.length).fill(null);
+
+    document.getElementById("quiz").style.display = "block";
+    document.getElementById("result").style.display = "none";
+
+    loadQuestion();
+};
+
+loadQuestion();
+
+</script>
+
+</body>
+</html>
